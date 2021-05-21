@@ -173,9 +173,13 @@ def main(argv = None):
         output = args.output
         limit = args.limit
 
-        if not youtube_id or not output:
+        if not youtube_id:
             parser.print_usage()
-            raise ValueError('you need to specify a Youtube ID and an output filename')
+            raise ValueError('You need to specify a Youtube ID or URL')
+
+        if not output:
+            print("No output file specified, saving to [youtubeid].json")
+            output = extractID(youtube_id) + ".json"
 
         if os.sep in output:
             outdir = os.path.dirname(output)
