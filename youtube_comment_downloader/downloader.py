@@ -31,7 +31,8 @@ def ajax_request(session, url, params=None, data=None, headers=None, retries=5, 
         response = session.post(url, params=params, data=data, headers=headers)
         if response.status_code == 200:
             return response.json()
-        if response.status_code in [403, 413]:
+        if response.status_code > 399:
+            print("Error: Http request returned bad status code: " + response.status_code + ", " + _ + " times.")
             return {}
         else:
             time.sleep(sleep)
