@@ -57,8 +57,10 @@ def download_comments(youtube_id, sort_by=SORT_BY_RECENT, sleep=.1):
         if ncd:
             break
 
-    if not ncd:
-        # Comments disabled?
+    try:
+        ncd
+    except NameError:
+        print("Comments disabled or video does not exist")
         return
 
     needs_sorting = sort_by != SORT_BY_POPULAR
@@ -151,9 +153,9 @@ def prepareDownload(ytid, outputFile, sort, limit):
 # Extracts id from (hopefully) all YouTube urls
 def extractID(source):
     if "/youtu.be/" in source:
-        return source[source.rfind("/")+1: source.find("?")]
+        return source[source.rfind("/")+1: source.find("?") if source.find("?") != -1 else None]
     if "youtube" in source:
-        return source[source.find("?v=")+3: source.find("&")]
+        return source[source.find("v=")+2: source.find("&") if source.find("&") != -1 else None]
     return source
 
 
