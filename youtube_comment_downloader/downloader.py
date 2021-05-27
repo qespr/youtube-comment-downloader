@@ -160,21 +160,53 @@ def extractID(source):
     return source
 
 
+# Should replace all characters ilegall in NTFS
+def sanitizeFileName(filename):
+    # https://stackoverflow.com/a/295152
+    return "".join(x for x in filename if (x.isalnum() or x in "._- ")).replace("\n", "")
+
+
+# Downloads comments for all files in file produced by "youtube-dl --get-id --get-title https://www.youtube.com/playlist?list=someListdjbuefb > someFile.txt"
+def downloadFromFile(dataFile, limit, sort=SORT_BY_RECENT):
+    reader = open(dataFile, "r")
+
+    while True:
+        vidName = reader.readline()
+        vidID = reader.readline()
+
+        if not vidName and not vidID:  # When both are None, file ended normaly
+            print("Finnished")
+            return
+
+        if not vidName or not vidID:  # If just one is None, file is malformed
+            print("Unexpected end of file, exiting..")
+            sys.exit(1)
+
+        prepareDownload(extractID(vidID), sanitizeFileName(vidName) + ".json", sort, limit)
+
+
 def main(argv = None):
     parser = argparse.ArgumentParser(add_help=False, description=('Download Youtube comments without using the Youtube API'))
     parser.add_argument('--help', '-h', action='help', default=argparse.SUPPRESS, help='Show this help message and exit')
     parser.add_argument('--youtubeid', '-y', help='ID or URL of Youtube video for which to download the comments')
+    parser.add_argument('--file', '-f', help='File of names and IDs or URLs to download comments for')
     parser.add_argument('--output', '-o', help='Output filename (output format is line delimited JSON)')
-    parser.add_argument('--limit', '-l', type=int, help='Limit the number of comments')
+    parser.add_argument('--limit', '-l', type=int, help='Limit the number of comments - applies globaly if file -f is specified')
     parser.add_argument('--sort', '-s', type=int, default=SORT_BY_RECENT,
                         help='Whether to download popular (0) or recent comments (1). Defaults to 1')
 
     try:
         args = parser.parse_args() if argv is None else parser.parse_args(argv)
 
+        dataFile = args.file
         youtube_id = args.youtubeid
         output = args.output
         limit = args.limit
+
+        if dataFile:
+            print("Data file set as: " + dataFile)
+            downloadFromFile(dataFile, limit, args.sort)
+            sys.exit(0)
 
         if not youtube_id:
             parser.print_usage()
