@@ -133,21 +133,35 @@ def search_dict(partial, search_key):
                 stack.append(value)
 
 
-def prepareDownload(ytid, outputFile, sort, limit):
+def prepareDownload(ytid, outputFile, sort, limit, array):
     print('Downloading Youtube comments for video:', ytid)
     count = 0
-    with io.open(outputFile, 'w', encoding='utf8') as fp:
+    writer = io.open(outputFile, "w", encoding="utf8")
+    if array:
+        writer.write("[\n")
+    try:
         sys.stdout.write('Downloaded %d comment(s)\r' % count)
         sys.stdout.flush()
         start_time = time.time()
         for comment in download_comments(ytid, sort):
             comment_json = json.dumps(comment, ensure_ascii=False)
-            print(comment_json.decode('utf-8') if isinstance(comment_json, bytes) else comment_json, file=fp)
+
+            if count > 0 and array:  # Writes "," only when we already have previous line
+                writer.write(",\n" if array else "\n")
+
+            writer.write(comment_json.decode('utf-8') if isinstance(comment_json, bytes) else comment_json)
             count += 1
             sys.stdout.write('Downloaded %d comment(s)\r' % count)
             sys.stdout.flush()
             if limit and count >= limit:
                 break
+    except IOError as ioe:
+        print("Error while wiriting to file: " + ioe)
+        return
+    finally:
+        if array:
+            writer.write("\n]")
+        writer.close()
     print('\n[{:.2f} seconds] Done!'.format(time.time() - start_time))
 
 
@@ -167,7 +181,7 @@ def sanitizeFileName(filename):
 
 
 # Downloads comments for all files in file produced by "youtube-dl --get-id --get-title https://www.youtube.com/playlist?list=someListdjbuefb > someFile.txt"
-def downloadFromFile(dataFile, limit, sort=SORT_BY_RECENT):
+def downloadFromFile(dataFile, limit, makeArray, sort=SORT_BY_RECENT):
     reader = open(dataFile, "r")
 
     while True:
@@ -182,7 +196,7 @@ def downloadFromFile(dataFile, limit, sort=SORT_BY_RECENT):
             print("Unexpected end of file, exiting..")
             sys.exit(1)
 
-        prepareDownload(extractID(vidID), sanitizeFileName(vidName) + ".json", sort, limit)
+        prepareDownload(extractID(vidID), sanitizeFileName(vidName) + ".json", sort, limit, makeArray)
 
 
 def main(argv = None):
@@ -190,7 +204,8 @@ def main(argv = None):
     parser.add_argument('--help', '-h', action='help', default=argparse.SUPPRESS, help='Show this help message and exit')
     parser.add_argument('--youtubeid', '-y', help='ID or URL of Youtube video for which to download the comments')
     parser.add_argument('--file', '-f', help='File of names and IDs or URLs to download comments for')
-    parser.add_argument('--output', '-o', help='Output filename (output format is line delimited JSON)')
+    parser.add_argument('--output', '-o', help='Output filename (output format is line delimited JSON unless -a specified)')
+    parser.add_argument('--array', '-a', action='store_true', help='Output to JSON array instead of line delimited JSON')
     parser.add_argument('--limit', '-l', type=int, help='Limit the number of comments - applies globaly if file -f is specified')
     parser.add_argument('--sort', '-s', type=int, default=SORT_BY_RECENT,
                         help='Whether to download popular (0) or recent comments (1). Defaults to 1')
@@ -205,7 +220,7 @@ def main(argv = None):
 
         if dataFile:
             print("Data file set as: " + dataFile)
-            downloadFromFile(dataFile, limit, args.sort)
+            downloadFromFile(dataFile, limit, args.array, args.sort)
             sys.exit(0)
 
         if not youtube_id:
@@ -221,7 +236,7 @@ def main(argv = None):
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
 
-        prepareDownload(extractID(youtube_id), output, args.sort, limit)
+        prepareDownload(extractID(youtube_id), output, args.sort, limit, args.array)
     except Exception as e:
         print('Error:', str(e))
         sys.exit(1)
