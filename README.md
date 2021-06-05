@@ -69,7 +69,8 @@ if this file will be passed to -f or --file then comments will be downloaded for
 be automatically stripped and replaced with "-" by the script to not cause any problems on NTFS.
 
 This file can be generated automatically using youtube-dl like this:
-`youtube-dl --get-id --get-title  https://www.youtube.com/playlist?list=someListId > someFile.txt`
+
+```youtube-dl --get-id --get-title  https://www.youtube.com/playlist?list=someListId > someFile.txt```
 
 ### Dependencies
 
