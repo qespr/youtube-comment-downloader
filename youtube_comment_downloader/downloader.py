@@ -146,8 +146,8 @@ def prepareDownload(ytid, outputFile, sort, limit, array):
         for comment in download_comments(ytid, sort):
             comment_json = json.dumps(comment, ensure_ascii=False)
 
-            if count > 0 and array:  # Writes "," only when we already have previous line
-                writer.write(",\n" if array else "\n")
+            if count > 0:  # Writes "," only when we already have previous line
+                writer.write(",\n" if array is True else "\n")
 
             writer.write(comment_json.decode('utf-8') if isinstance(comment_json, bytes) else comment_json)
             count += 1
@@ -161,6 +161,7 @@ def prepareDownload(ytid, outputFile, sort, limit, array):
     finally:
         if array:
             writer.write("\n]")
+        writer.write("\n")
         writer.close()
     print('\n[{:.2f} seconds] Done!'.format(time.time() - start_time))
 
@@ -184,6 +185,11 @@ def sanitizeFileName(filename):
 def downloadFromFile(dataFile, limit, makeArray, changedDir="./", sort=SORT_BY_RECENT):
     reader = open(dataFile, "r")
 
+    if changedDir is None:
+        changedDir = "./"
+    else:
+        print("Changed download directory to: " + changedDir)
+
     while True:
         vidName = reader.readline()
         vidID = reader.readline()
@@ -195,7 +201,7 @@ def downloadFromFile(dataFile, limit, makeArray, changedDir="./", sort=SORT_BY_R
         if not vidName or not vidID:  # If just one is None, file is malformed
             print("Unexpected end of file, exiting..")
             sys.exit(1)
-        # check if overriding dir
+
         prepareDownload(extractID(vidID), changedDir + sanitizeFileName(vidName) + ".json", sort, limit, makeArray)
 
 
@@ -204,7 +210,7 @@ def main(argv = None):
     parser.add_argument('--help', '-h', action='help', default=argparse.SUPPRESS, help='Show this help message and exit')
     parser.add_argument('--youtubeid', '-y', help='ID or URL of Youtube video for which to download the comments')
     parser.add_argument('--file', '-f', help='File of names and IDs or URLs to download comments for')
-    parser.add_argument('--output', '-o', help='Output file or directory (if -f is specified) format is line delimited JSON unless -a specified)')
+    parser.add_argument('--output', '-o', help='Change output file (or directory if -f is specified) format is line delimited JSON unless (-a specified)')
     parser.add_argument('--array', '-a', action='store_true', help='Output to JSON array instead of line delimited JSON')
     parser.add_argument('--limit', '-l', type=int, help='Limit the number of comments - applies globaly if file -f is specified')
     parser.add_argument('--sort', '-s', type=int, default=SORT_BY_RECENT,
@@ -217,7 +223,6 @@ def main(argv = None):
         youtube_id = args.youtubeid
         output = args.output
         limit = args.limit
-        saveTo = args.directory if args.directory else "./"
 
         if output and os.sep in output:
             outdir = os.path.dirname(output)
@@ -229,9 +234,12 @@ def main(argv = None):
             print("No output file specified, saving to ./" + output)
 
         if dataFile:
-            print("Data file set as: " + dataFile + ", Output dir: " + saveTo)
-            downloadFromFile(dataFile, limit, args.array, saveTo, args.sort)
-            sys.exit(0)
+            if os.path.exists(dataFile):
+                print("Data file set as: " + dataFile)
+                downloadFromFile(dataFile, limit, args.array, output, args.sort)
+            else:
+                print("Data file: " + dataFile + " not found! Exiting...")
+            sys.exit(1)
 
         if not youtube_id:
             parser.print_usage()
